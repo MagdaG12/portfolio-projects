@@ -1,0 +1,233 @@
+CREATE VIEW forestation AS 
+SELECT f.country_code, f. country_name, f.year, r.region, 
+r.income_group, f.forest_area_sqkm, l.total_area_sq_mi, 
+(f.forest_area_sqkm/(l.total_area_sq_mi*2.59))*100 
+forest_percentage
+FROM forest_area f 
+JOIN land_area l 
+ON f.country_code=l.country_code AND
+ f.year=l.year
+JOIN regions r 
+ON r.country_code=l.country_code
+SELECT SUM(forest_area_sqkm)
+FROM forest_area
+WHERE country_name='World'
+AND year=1990
+SELECT SUM(forest_area_sqkm)
+FROM forest_area
+WHERE country_name='World'
+AND year=2016
+SELECT B.year,
+SUM(B.forest_area_sqkm)
+- SUM(A.forest_area_sqkm) AS 
+difference
+FROM forest_area A 
+JOIN forest_area B 
+ON A.country_name=B.country_name 
+WHERE A.country_name='World'
+AND A.year=1990 
+AND B.year=2016
+GROUP BY 1
+SELECT B.year, ((SUM(B.forest_area_sqkm)
+-
+SUM(A.forest_area_sqkm))/SUM(A.forest_area_sqkm))*100 AS 
+percent_change
+FROM forest_area A 
+JOIN forest_area B 
+ON A.country_name=B.country_name 
+WHERE A.country_name='World'
+AND A.year=1990 
+AND B.year=2016
+GROUP BY 1
+SELECT country_name, year, total_area_sq_mi*2.59 AS 
+land_area_sqkm 
+FROM land_area
+WHERE year=2016
+ORDER BY ABS(total_area_sq_mi
+-(1324449/2.59))
+LIMIT 1
+2 CREATE VIEW forest_area_region AS 
+SELECT r.region, f.year, 
+(SUM(f.forest_area_sqkm)/(SUM(l.total_area_sq_mi)*2.59))*100 
+region_area_percentage
+FROM regions r 
+JOIN forest_area f 
+ON f.country_code=r.country_code 
+JOIN land_area l 
+ON f.country_code=l.country_code
+AND f.year=l.year 
+GROUP BY 1,
+2
+SELECT region_area_percentage
+FROM forest_area_region
+WHERE region='World' 
+AND year=2016
+SELECT region, region_area_percentage
+FROM forest_area_region
+WHERE year=2016
+ORDER BY region_area_percentage
+LIMIT 1
+SELECT region, region_area_percentage
+FROM forest_area_region
+WHERE year=1990
+ORDER BY region_area_percentage DESC
+LIMIT 1
+SELECT region, region_area_percentage
+FROM forest_area_region
+WHERE year=1990
+ORDER BY region_area_percentage DESC
+LIMIT 1
+SELECT region, year, region_area_percentage
+FROM forest_area_region
+WHERE year=1990
+AND region='World'
+SELECT sub3.region, far.year, far.region_area_percentage
+FROM 
+(SELECT sub2.*
+FROM 
+(SELECT sub.*,
+LAG(region_area_percentage) OVER (ORDER 
+BY region) AS previous_percentage,
+region_area_percentage -
+LAG(region_area_percentage) OVER (ORDER 
+BY region) AS percentage_difference
+FROM
+(SELECT DISTINCT far.region, far.year, 
+far.region_area_percentage
+FROM forest_area_region far
+JOIN forestation f
+ON far.region=f.region 
+AND far.year=f.year
+WHERE far.year IN (1990,2016)
+ORDER BY 1,2) sub ) sub2
+WHERE sub2.year=2016
+AND sub2.percentage_difference < 0 ) sub3
+JOIN forest_area_region far
+ON far.region=sub3.region
+WHERE far.year IN (1990,2016)
+ORDER BY 1,2
+SELECT sub3.region, far.year, far.region_area_percentage
+FROM 
+(SELECT sub2.*
+FROM 
+(SELECT sub.*,
+LAG(region_area_percentage) OVER (ORDER 
+BY region) AS previous_percentage,
+region_area_percentage -
+LAG(region_area_percentage) OVER (ORDER 
+BY region) AS percentage_difference
+FROM
+(SELECT DISTINCT far.region, far.year, 
+far.region_area_percentage
+FROM forest_area_region far
+JOIN forestation f
+ON far.region=f.region 
+AND far.year=f.year
+WHERE far.year IN (1990,2016)
+ORDER BY 1,2) sub ) sub2
+WHERE sub2.year=2016
+AND sub2.region ! = ’World’ ) sub3
+JOIN forest_area_region far
+ON far.region=sub3.region
+WHERE far.year IN (1990,2016)
+ORDER BY 1,2
+3a. SELECT B.country_name, B.year, B.forest_area_sqkm -
+A.forest_area_sqkm AS area_difference
+FROM forest_area A
+JOIN forest_area B
+ON A.country_name=B.country_name
+WHERE A.year=1990
+AND B.year=2016
+AND B.forest_area_sqkm - A.forest_area_sqkm > 0
+ORDER BY 3 DESC
+SELECT B.country_name, B.year, B.forest_area_sqkm -
+A.forest_area_sqkm AS area_difference,
+((B.forest_area_sqkmA.forest_area_sqkm)/A.forest_area_sqkm)*100 AS 
+percent_change
+FROM forest_area A
+JOIN forest_area B
+ON A.country_name=B.country_name
+WHERE A.year=1990
+AND B.year=2016
+AND B.forest_area_sqkm 
+- A.forest_area_sqkm > 0
+ORDER BY 4 DESC
+3b. SELECT B.country_name, B.year,
+ ABS(B.forest_area_sqkm
+-A.forest_area_sqkm) AS 
+absolute_difference
+FROM forest_area A 
+JOIN forest_area B 
+ON A.country_name=B.country_name 
+WHERE A.year=1990 
+AND B.year=2016 
+AND B.country_name != 'World'
+AND A.forest_area_sqkm > 0 
+AND B.forest_area_sqkm > 0 
+AND A.forest_area_sqkm>B.forest_area_sqkm
+ORDER BY 3 DESC
+SELECT B.country_name, B.year,
+ ((B.forest_area_sqkm
+-
+A.forest_area_sqkm)/A.forest_area_sqkm)*100 AS 
+percent_change
+FROM forest_area A 
+JOIN forest_area B 
+ON A.country_name=B.country_name 
+WHERE A.year=1990 
+AND B.year=2016 
+AND B.country_name != 'World'
+AND A.forest_area_sqkm > 0 
+AND B.forest_area_sqkm > 0 
+AND A.forest_area_sqkm>B.forest_area_sqkm
+ORDER BY 3
+3c. SELECT sub.percentile, COUNT(*)
+FROM 
+(SELECT country_name,
+CASE WHEN forest_percentage >=75 THEN 4
+ WHEN forest_percentage >=50 AND 
+forest_percentage <75 THEN 3 
+ WHEN forest_percentage >=25 AND 
+forest_percentage <50 THEN 2 
+ ELSE 1 END AS percentile
+FROM forestation
+WHERE year=2016
+AND country_name !=’World
+’
+AND forest_percentage IS NOT NULL
+) sub 
+GROUP BY 1
+ORDER BY 1
+SELECT sub.country_name, sub.region, sub.forest_percentage, 
+sub2.percentile
+FROM
+(SELECT sub.percentile, COUNT(*)
+FROM 
+(SELECT country_name, region, 
+forest_percentage, 
+CASE WHEN forest_percentage >=75 THEN 4
+ WHEN forest_percentage >=50 AND 
+forest_percentage <75 THEN 3 
+ WHEN forest_percentage >=25 AND 
+forest_percentage <50 THEN 2 
+ ELSE 1 END AS percentile
+FROM forestation
+WHERE year=2016
+AND forest_percentage IS NOT NULL
+) sub 
+GROUP BY 1
+ORDER BY 1) sub2
+JOIN 
+(SELECT country_name, region, forest_percentage,
+CASE WHEN forest_percentage >=75 THEN 4
+WHEN forest_percentage >=50 AND 
+forest_percentage <75 THEN 3 
+ WHEN forest_percentage >=25 AND 
+forest_percentage <50 THEN 2 
+ ELSE 1 END AS percentile
+FROM forestation
+WHERE year=2016
+AND forest_percentage IS NOT NULL
+) sub
+ON sub.percentile=sub2.percentile
+WHERE sub2.percentile=4
